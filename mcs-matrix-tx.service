@@ -1,0 +1,39 @@
+[Unit]
+Description=MCS Matrix TX – mesh network + throughput sweep
+After=network-online.target multi-user.target systemd-modules-load.service
+Wants=network-online.target
+# Wait for everything to be fully up before we touch interfaces
+After=systemd-networkd-wait-online.service NetworkManager-wait-online.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+
+# --- Configuration (edit these) ---
+Environment=TX_BAT_IP=192.168.50.1/24
+Environment=RX_IP=192.168.50.2
+Environment=CTRL_PORT=9999
+Environment=IPERF_PORT=5201
+Environment=IPERF_DURATION=60
+Environment=INITIAL_WAIT=0
+Environment=GUARD=0
+Environment=MESH_SCRIPT=/opt/mcs-test/sdmah-mesh.sh
+Environment=TX_SCRIPT=/opt/mcs-test/tx_matrix.py
+
+# Step 1: Patch the BAT_IP in sdmah-mesh.sh and run it
+ExecStartPre=/bin/bash -c 'sed -i "s|^BAT_IP=.*|BAT_IP=\"${TX_BAT_IP}\"|" ${MESH_SCRIPT}'
+ExecStartPre=/bin/bash ${MESH_SCRIPT}
+
+# Step 2: Small settle delay for the mesh to form
+ExecStartPre=/bin/sleep 5
+
+# Step 3: Run the MCS sweep
+ExecStart=/bin/bash -c 'exec env INITIAL_WAIT=${INITIAL_WAIT} GUARD=${GUARD} python3 ${TX_SCRIPT} ${RX_IP} ${CTRL_PORT} ${IPERF_PORT} ${IPERF_DURATION}'
+
+WorkingDirectory=/opt/mcs-test
+StandardOutput=journal+console
+StandardError=journal+console
+TimeoutStartSec=infinity
+
+[Install]
+WantedBy=multi-user.target
