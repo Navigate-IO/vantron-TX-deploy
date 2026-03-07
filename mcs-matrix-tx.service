@@ -2,7 +2,6 @@
 Description=MCS Matrix TX – mesh network + throughput sweep
 After=network-online.target multi-user.target systemd-modules-load.service
 Wants=network-online.target
-# Wait for everything to be fully up before we touch interfaces
 After=systemd-networkd-wait-online.service NetworkManager-wait-online.service
 
 [Service]
@@ -20,7 +19,15 @@ Environment=GUARD=0
 Environment=MESH_SCRIPT=/opt/mcs-test/sdmah-mesh.sh
 Environment=TX_SCRIPT=/opt/mcs-test/tx_matrix.py
 
-# Step 0: Make sure WiFi radio is unblocked
+# Step 0: Load morse driver modules
+ExecStartPre=/sbin/modprobe cfg80211
+ExecStartPre=/sbin/modprobe mac80211
+ExecStartPre=/sbin/modprobe crc7
+ExecStartPre=-/sbin/rmmod morse dot11ah
+ExecStartPre=/sbin/insmod /home/pi/morse_driver/dot11ah/dot11ah.ko
+ExecStartPre=/sbin/insmod /home/pi/morse_driver/morse.ko
+
+# Step 1: Make sure WiFi radio is unblocked
 ExecStartPre=/usr/sbin/rfkill unblock wifi
 
 # Step 1: Patch the BAT_IP in sdmah-mesh.sh and run it
