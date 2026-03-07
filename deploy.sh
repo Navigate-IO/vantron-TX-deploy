@@ -25,6 +25,9 @@ echo "============================================"
 echo " MCS Matrix TX — Full Setup"
 echo "============================================"
 
+echo "[0/3] Installing dependencies..."
+sudo apt update
+sudo apt install -y iperf3 batctl
 # -----------------------------------------------------------
 # 1. Clone and run the install script (driver + repos)
 # -----------------------------------------------------------
