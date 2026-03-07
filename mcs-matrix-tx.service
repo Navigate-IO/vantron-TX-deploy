@@ -20,6 +20,9 @@ Environment=GUARD=0
 Environment=MESH_SCRIPT=/opt/mcs-test/sdmah-mesh.sh
 Environment=TX_SCRIPT=/opt/mcs-test/tx_matrix.py
 
+# Step 0: Make sure WiFi radio is unblocked
+ExecStartPre=/usr/sbin/rfkill unblock wifi
+
 # Step 1: Patch the BAT_IP in sdmah-mesh.sh and run it
 ExecStartPre=/bin/bash -c 'sed -i "s|^BAT_IP=.*|BAT_IP=\"${TX_BAT_IP}\"|" ${MESH_SCRIPT}'
 ExecStartPre=/bin/bash ${MESH_SCRIPT}
