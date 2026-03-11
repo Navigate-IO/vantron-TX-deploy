@@ -19,8 +19,9 @@ Environment=GUARD=0
 Environment=MESH_SCRIPT=/opt/mcs-test/sdmah-mesh.sh
 Environment=TX_SCRIPT=/opt/mcs-test/tx_matrix.py
 
-# Step 0: Stop lighttpd so it doesn't conflict with drone server
+# Step 0: Stop lighttpd and NetworkManager
 ExecStartPre=-/bin/systemctl stop lighttpd
+ExecStartPre=-/bin/systemctl stop NetworkManager
 
 # Step 1: Load morse driver modules
 ExecStartPre=/sbin/modprobe cfg80211
