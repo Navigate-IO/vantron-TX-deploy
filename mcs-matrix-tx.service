@@ -23,6 +23,10 @@ Environment=TX_SCRIPT=/opt/mcs-test/tx_matrix.py
 ExecStartPre=-/bin/systemctl stop lighttpd
 ExecStartPre=-/bin/systemctl stop NetworkManager
 
+# Step 0b: Bring up wlan1 AP interface and restart hostapd
+ExecStartPre=-/sbin/ip link set wlan1 up
+ExecStartPre=-/bin/systemctl restart hostapd
+
 # Step 1: Load morse driver modules
 ExecStartPre=/sbin/modprobe cfg80211
 ExecStartPre=/sbin/modprobe mac80211
