@@ -6,7 +6,6 @@ After=systemd-networkd-wait-online.service NetworkManager-wait-online.service
 
 [Service]
 Type=oneshot
-RemainAfterExit=yes
 
 # --- Configuration (edit these) ---
 Environment=TX_BAT_IP=192.168.50.1/24
