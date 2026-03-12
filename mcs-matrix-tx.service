@@ -48,6 +48,9 @@ ExecStartPre=/bin/sleep 5
 # Step 6: Run the MCS sweep
 ExecStart=/bin/bash -c 'exec env INITIAL_WAIT=${INITIAL_WAIT} GUARD=${GUARD} python3 ${TX_SCRIPT} ${RX_IP} ${CTRL_PORT} ${IPERF_PORT} ${IPERF_DURATION}'
 
+# Step 7: Start drone server after sweep completes
+ExecStartPost=/bin/systemctl start drone-server
+
 WorkingDirectory=/opt/mcs-test
 StandardOutput=journal+console
 StandardError=journal+console
