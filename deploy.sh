@@ -111,13 +111,23 @@ else
 fi
 
 # -----------------------------------------------------------
-# 6. Install systemd service
+# 6. Install systemd services
 # -----------------------------------------------------------
 echo ""
-echo "[6/6] Installing systemd service..."
+echo "[6/6] Installing systemd services..."
 cp "$SCRIPT_DIR/mcs-matrix-tx.service" /etc/systemd/system/
+cp "$SCRIPT_DIR/drone-server.service" /etc/systemd/system/
+
+# Make drone server wait until MCS sweep finishes on TX
+mkdir -p /etc/systemd/system/drone-server.service.d
+tee /etc/systemd/system/drone-server.service.d/after-mcs.conf > /dev/null <<EOF
+[Unit]
+After=mcs-matrix-tx.service
+EOF
+
 systemctl daemon-reload
 systemctl enable mcs-matrix-tx.service
+systemctl enable drone-server.service
 
 echo ""
 echo "============================================"
@@ -127,6 +137,7 @@ echo ""
 echo " Driver:  built and loaded"
 echo " Files:   ${INSTALL_DIR}"
 echo " Service: mcs-matrix-tx.service (enabled)"
+echo " Service: drone-server.service (enabled)"
 echo " AP:      wlan1 → SSID: uas6, IP: ${WLAN1_IP}"
 echo " Drone:   otherDronesUrls → ${OTHER_DRONE_URL}"
 echo " JDK:     $(java -version 2>&1 | head -1)"
@@ -135,9 +146,11 @@ echo " To edit config (IPs, ports):"
 echo "   sudo nano /etc/systemd/system/mcs-matrix-tx.service"
 echo "   sudo systemctl daemon-reload"
 echo ""
-echo " Starting service now..."
+echo " Starting services now..."
 systemctl start mcs-matrix-tx
+systemctl start drone-server
 echo ""
 echo " To watch logs:"
 echo "   journalctl -u mcs-matrix-tx -f"
+echo "   journalctl -u drone-server -f"
 echo ""
