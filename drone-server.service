@@ -1,0 +1,16 @@
+[Unit]
+Description=Drone Server (NavigateIO)
+After=network-online.target hostapd.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/pi/drone-public/deployment
+ExecStart=/usr/bin/java -jar /home/pi/drone-public/deployment/DroneServer-1.0.jar
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal+console
+StandardError=journal+console
+
+[Install]
+WantedBy=multi-user.target
