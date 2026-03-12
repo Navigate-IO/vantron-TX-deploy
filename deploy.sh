@@ -118,16 +118,8 @@ echo "[6/6] Installing systemd services..."
 cp "$SCRIPT_DIR/mcs-matrix-tx.service" /etc/systemd/system/
 cp "$SCRIPT_DIR/drone-server.service" /etc/systemd/system/
 
-# Make drone server wait until MCS sweep finishes on TX
-mkdir -p /etc/systemd/system/drone-server.service.d
-tee /etc/systemd/system/drone-server.service.d/after-mcs.conf > /dev/null <<EOF
-[Unit]
-After=mcs-matrix-tx.service
-EOF
-
 systemctl daemon-reload
 systemctl enable mcs-matrix-tx.service
-systemctl enable drone-server.service
 
 echo ""
 echo "============================================"
