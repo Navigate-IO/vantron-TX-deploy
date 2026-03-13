@@ -12,7 +12,7 @@ Environment=TX_BAT_IP=192.168.50.1/24
 Environment=RX_IP=192.168.50.2
 Environment=CTRL_PORT=9999
 Environment=IPERF_PORT=5201
-Environment=IPERF_DURATION=60
+Environment=IPERF_DURATION=10
 Environment=INITIAL_WAIT=0
 Environment=GUARD=0
 Environment=MESH_SCRIPT=/opt/mcs-test/sdmah-mesh.sh
