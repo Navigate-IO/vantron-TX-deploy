@@ -32,7 +32,7 @@ ExecStartPre=/sbin/modprobe mac80211
 ExecStartPre=/sbin/modprobe crc7
 ExecStartPre=-/sbin/rmmod morse dot11ah
 ExecStartPre=/sbin/insmod /home/pi/morse_driver/dot11ah/dot11ah.ko
-ExecStartPre=/sbin/insmod /home/pi/morse_driver/morse.ko
+ExecStartPre=/sbin/insmod /home/pi/morse_driver/morse.ko country=US
 
 # Step 1: Make sure WiFi radio is unblocked
 ExecStartPre=/usr/sbin/rfkill unblock wifi
