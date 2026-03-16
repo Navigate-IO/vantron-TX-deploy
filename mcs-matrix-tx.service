@@ -26,28 +26,24 @@ ExecStartPre=-/bin/systemctl stop NetworkManager
 ExecStartPre=-/sbin/ip link set wlan1 up
 ExecStartPre=-/bin/systemctl restart hostapd
 
-# Step 1: Load morse driver modules
-ExecStartPre=/sbin/modprobe cfg80211
-ExecStartPre=/sbin/modprobe mac80211
-ExecStartPre=/sbin/modprobe crc7
-ExecStartPre=-/sbin/rmmod morse dot11ah
-ExecStartPre=/sbin/insmod /home/pi/morse_driver/dot11ah/dot11ah.ko
-ExecStartPre=/sbin/insmod /home/pi/morse_driver/morse.ko country=US
+# Step 1: Load morse driver via sx-sdmah
+ExecStartPre=/bin/bash /home/pi/sx-sdmah/load_driver.sh
+ExecStartPre=/bin/sleep 20
 
-# Step 1: Make sure WiFi radio is unblocked
+# Step 2: Make sure WiFi radio is unblocked
 ExecStartPre=/usr/sbin/rfkill unblock wifi
 
-# Step 2: Patch the BAT_IP in sdmah-mesh.sh and run it
+# Step 3: Patch the BAT_IP in sdmah-mesh.sh and run it
 ExecStartPre=/bin/bash -c 'sed -i "s|^BAT_IP=.*|BAT_IP=\"${TX_BAT_IP}\"|" ${MESH_SCRIPT}'
 ExecStartPre=/bin/bash ${MESH_SCRIPT}
 
 # Step 4: Small settle delay for the mesh to form
 ExecStartPre=/bin/sleep 5
 
-# Step 6: Run the MCS sweep
+# Step 5: Run the MCS sweep
 ExecStart=/bin/bash -c 'exec env INITIAL_WAIT=${INITIAL_WAIT} GUARD=${GUARD} python3 ${TX_SCRIPT} ${RX_IP} ${CTRL_PORT} ${IPERF_PORT} ${IPERF_DURATION}'
 
-# Step 7: Start drone server after sweep completes
+# Step 6: Start drone server after sweep completes
 ExecStartPost=/bin/systemctl start drone-server
 
 WorkingDirectory=/opt/mcs-test
