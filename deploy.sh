@@ -44,7 +44,7 @@ else
     git clone https://github.com/Navigate-IO/vantron-install-script.git "$INSTALL_SCRIPT_REPO"
 fi
 
-bash "$INSTALL_SCRIPT_REPO/vantron-install-script.sh"
+bash "$INSTALL_SCRIPT_REPO/install-script.sh"
 
 # -----------------------------------------------------------
 # 2. Verify repos were cloned
