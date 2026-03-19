@@ -69,7 +69,7 @@ sudo mkdir -p "$INSTALL_DIR"
 
 sudo cp "$MCS_TEST_DIR/tx_matrix.py"              "$INSTALL_DIR/"
 sudo cp "$MCS_TEST_DIR/rx_control.py"             "$INSTALL_DIR/"
-sudo cp "$SCRIPT_DIR/vantron-mesh.sh"             "$INSTALL_DIR/"
+sudo cp "$VANTRON_MESH_DIR/vantron-mesh.sh"       "$INSTALL_DIR/"
 
 sudo chmod +x "$INSTALL_DIR"/*.py "$INSTALL_DIR"/*.sh 2>/dev/null || true
 
