@@ -1,5 +1,5 @@
 [Unit]
-Description=MCS Matrix TX – mesh network + throughput sweep
+Description=MCS Matrix TX – mesh network + throughput sweep (Vantron)
 After=network-online.target multi-user.target systemd-modules-load.service
 Wants=network-online.target
 After=systemd-networkd-wait-online.service NetworkManager-wait-online.service
@@ -15,28 +15,29 @@ Environment=IPERF_PORT=5201
 Environment=IPERF_DURATION=10
 Environment=INITIAL_WAIT=0
 Environment=GUARD=0
-Environment=MESH_SCRIPT=/opt/mcs-test/sdmah-mesh.sh
+Environment=MESH_SCRIPT=/opt/mcs-test/vantron-mesh.sh
 Environment=TX_SCRIPT=/opt/mcs-test/tx_matrix.py
 
-# Step 0: Stop lighttpd and NetworkManager
+# Step 0: Stop conflicting services
 ExecStartPre=-/bin/systemctl stop lighttpd
 ExecStartPre=-/bin/systemctl stop NetworkManager
 
-# Step 0b: Bring up wlan1 AP interface and restart hostapd
+# Step 0b: Bring up wlan1 (onboard wifi) AP interface and restart hostapd
 ExecStartPre=-/sbin/ip link set wlan1 up
 ExecStartPre=-/bin/systemctl restart hostapd
 
-# Step 1: Load morse driver via sx-sdmah
-ExecStartPre=/bin/bash /home/pi/sx-sdmah/load_driver.sh
-ExecStartPre=/bin/sleep 20
+# Step 1: Load Morse Micro driver (no load_driver.sh needed)
+ExecStartPre=-/sbin/modprobe dot11ah
+ExecStartPre=-/sbin/modprobe morse
+ExecStartPre=/bin/sleep 5
 
 # Step 2: Make sure WiFi radio is unblocked
 ExecStartPre=/usr/sbin/rfkill unblock wifi
 
-# Step 3: Wait for wlan0 to be fully ready
-ExecStartPre=/bin/sleep 10
+# Step 3: Wait for wlan0 (Vantron) to be fully ready
+ExecStartPre=/bin/sleep 5
 
-# Step 4: Patch the BAT_IP in sdmah-mesh.sh and run it
+# Step 4: Patch the BAT_IP in mesh script and run it
 ExecStartPre=/bin/bash -c 'sed -i "s|^BAT_IP=.*|BAT_IP=\"${TX_BAT_IP}\"|" ${MESH_SCRIPT}'
 ExecStartPre=/bin/bash ${MESH_SCRIPT}
 
