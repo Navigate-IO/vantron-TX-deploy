@@ -64,17 +64,19 @@ echo "  → Driver loaded, wlan0 present"
 echo ""
 echo "[3/7] Cloning repositories..."
 
-for repo_url repo_dir in \
-    "https://github.com/Navigate-IO/vantron-mesh.git" "$VANTRON_MESH_DIR" \
-    "https://github.com/Navigate-IO/Recieve-Transfer-MCS-Test.git" "$MCS_TEST_DIR" \
-    "https://github.com/Navigate-IO/drone-public.git" "$DRONE_DIR"; do
-    if [ -d "$repo_dir" ]; then
-        echo "  → $(basename $repo_dir) exists, pulling..."
-        git -C "$repo_dir" pull || true
+clone_or_pull() {
+    local url="$1" dir="$2"
+    if [ -d "$dir" ]; then
+        echo "  → $(basename "$dir") exists, pulling..."
+        git -C "$dir" pull || true
     else
-        git clone "$repo_url" "$repo_dir"
+        git clone "$url" "$dir"
     fi
-done
+}
+
+clone_or_pull "https://github.com/Navigate-IO/vantron-mesh.git" "$VANTRON_MESH_DIR"
+clone_or_pull "https://github.com/Navigate-IO/Recieve-Transfer-MCS-Test.git" "$MCS_TEST_DIR"
+clone_or_pull "https://github.com/Navigate-IO/drone-public.git" "$DRONE_DIR"
 
 # -----------------------------------------------------------
 # 4. Install MCS test files
