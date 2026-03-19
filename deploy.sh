@@ -1,13 +1,12 @@
 #!/bin/bash
 # deploy.sh for TX Pi (Vantron VT-USB-AH-8108)
 #
-# Run on a Pi that already has:
-#   - Kernel 6.6.x with Morse Micro patches compiled and installed
-#   - Morse Micro driver modules (morse.ko, dot11ah.ko) in /lib/modules/
-#   - Firmware files in /lib/firmware/morse/
-#   - morsectrl and morse_cli in /usr/bin/
+# This is the ONLY script you need to run on a fresh Pi.
+# It runs the install script (clones repos, loads driver, installs JDK,
+# configures AP on onboard WiFi), then configures everything for TX.
 #
-# This script sets up the software stack: repos, mesh, AP, MCS tests, drone server.
+# Prerequisites: Pi must already have the patched 6.6.x kernel with
+# Morse Micro driver modules and firmware installed.
 #
 # Usage:
 #   git clone https://github.com/Navigate-IO/vantron-tx-deploy.git
@@ -19,7 +18,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 INSTALL_DIR="/opt/mcs-test"
 
-VANTRON_MESH_DIR="/home/pi/vantron-mesh"
+# Paths that install script will create
+INSTALL_SCRIPT_REPO="/home/pi/vantron-install-script"
 MCS_TEST_DIR="/home/pi/Recieve-Transfer-MCS-Test"
 DRONE_DIR="/home/pi/drone-public"
 
@@ -32,119 +32,56 @@ echo " Vantron MCS Matrix TX — Full Setup"
 echo "============================================"
 
 # -----------------------------------------------------------
-# 1. Install system dependencies
+# 1. Clone and run the install script
 # -----------------------------------------------------------
 echo ""
-echo "[1/7] Installing system dependencies..."
-sudo apt update
-sudo apt install -y iperf3 batctl hostapd dnsmasq ca-certificates default-jdk
+echo "[1/6] Running install script..."
 
-# -----------------------------------------------------------
-# 2. Verify driver is loaded
-# -----------------------------------------------------------
-echo ""
-echo "[2/7] Verifying Morse Micro driver..."
-
-if ! lsmod | grep -q "^morse "; then
-    echo "  Loading driver modules..."
-    sudo modprobe dot11ah
-    sudo modprobe morse
-    sleep 5
+if [ -d "$INSTALL_SCRIPT_REPO" ]; then
+    echo "  → install-script repo exists, pulling latest..."
+    git -C "$INSTALL_SCRIPT_REPO" pull
+else
+    git clone https://github.com/Navigate-IO/vantron-install-script.git "$INSTALL_SCRIPT_REPO"
 fi
 
-if ! iw dev | grep -q "wlan0"; then
-    echo "ERROR: wlan0 (Vantron) not found. Is the dongle plugged in and driver installed?"
-    exit 1
-fi
-echo "  → Driver loaded, wlan0 present"
+bash "$INSTALL_SCRIPT_REPO/vantron-install-script.sh"
 
 # -----------------------------------------------------------
-# 3. Clone repositories
+# 2. Verify repos were cloned
 # -----------------------------------------------------------
 echo ""
-echo "[3/7] Cloning repositories..."
+echo "[2/6] Verifying dependencies..."
 
-clone_or_pull() {
-    local url="$1" dir="$2"
-    if [ -d "$dir" ]; then
-        echo "  → $(basename "$dir") exists, pulling..."
-        git -C "$dir" pull || true
-    else
-        git clone "$url" "$dir"
+for dir in "$MCS_TEST_DIR" "$DRONE_DIR"; do
+    if [ ! -d "$dir" ]; then
+        echo "ERROR: Expected $dir to exist after install script."
+        exit 1
     fi
-}
-
-clone_or_pull "https://github.com/Navigate-IO/vantron-mesh.git" "$VANTRON_MESH_DIR"
-clone_or_pull "https://github.com/Navigate-IO/Recieve-Transfer-MCS-Test.git" "$MCS_TEST_DIR"
-clone_or_pull "https://github.com/Navigate-IO/drone-public.git" "$DRONE_DIR"
+done
+echo "  All repos present."
 
 # -----------------------------------------------------------
-# 4. Install MCS test files
+# 3. Install MCS test files
 # -----------------------------------------------------------
 echo ""
-echo "[4/7] Installing MCS test files to ${INSTALL_DIR}..."
+echo "[3/6] Installing MCS test files to ${INSTALL_DIR}..."
 sudo mkdir -p "$INSTALL_DIR"
 
-sudo cp "$MCS_TEST_DIR/tx_matrix.py"     "$INSTALL_DIR/"
-sudo cp "$MCS_TEST_DIR/rx_control.py"    "$INSTALL_DIR/"
-sudo cp "$SCRIPT_DIR/vantron-mesh.sh"    "$INSTALL_DIR/"
+sudo cp "$MCS_TEST_DIR/tx_matrix.py"              "$INSTALL_DIR/"
+sudo cp "$MCS_TEST_DIR/rx_control.py"             "$INSTALL_DIR/"
+sudo cp "$SCRIPT_DIR/vantron-mesh.sh"             "$INSTALL_DIR/"
 
 sudo chmod +x "$INSTALL_DIR"/*.py "$INSTALL_DIR"/*.sh 2>/dev/null || true
 
 # -----------------------------------------------------------
-# 5. Set up udev rules (wlan0=Vantron Morse, wlan1=onboard brcm)
+# 4. Configure wlan1 static IP for AP
 # -----------------------------------------------------------
 echo ""
-echo "[5/7] Setting up udev rules..."
-sudo tee /etc/udev/rules.d/70-wifi-names.rules > /dev/null <<'UDEVEOF'
-# Vantron Morse Micro USB dongle → wlan0
-SUBSYSTEM=="net", ACTION=="add", ATTRS{idVendor}=="325b", NAME="wlan0"
-# Onboard Broadcom WiFi → wlan1
-SUBSYSTEM=="net", ACTION=="add", DRIVERS=="brcmfmac", NAME="wlan1"
-UDEVEOF
-sudo udevadm control --reload-rules
+echo "[4/6] Configuring wlan1 with static IP ${WLAN1_IP}..."
 
-# -----------------------------------------------------------
-# 6. Configure AP on wlan1 (onboard WiFi)
-# -----------------------------------------------------------
-echo ""
-echo "[6/7] Configuring AP on wlan1 (onboard WiFi)..."
-
-sudo systemctl stop hostapd 2>/dev/null || true
-sudo systemctl stop dnsmasq 2>/dev/null || true
-
-sudo mkdir -p /etc/hostapd
-sudo tee /etc/hostapd/hostapd.conf > /dev/null <<EOF
-interface=wlan1
-driver=nl80211
-ssid=uas6
-hw_mode=g
-channel=6
-wmm_enabled=0
-macaddr_acl=0
-auth_algs=1
-ignore_broadcast_ssid=0
-wpa=2
-wpa_passphrase=hello123
-wpa_key_mgmt=WPA-PSK
-rsn_pairwise=CCMP
-EOF
-
-sudo sed -i 's|^#DAEMON_CONF=.*|DAEMON_CONF="/etc/hostapd/hostapd.conf"|' /etc/default/hostapd 2>/dev/null || true
-
-sudo mkdir -p /etc/dnsmasq.d
-sudo tee /etc/dnsmasq.d/wlan1-ap.conf > /dev/null <<EOF
-interface=wlan1
-dhcp-range=192.168.40.100,192.168.40.200,255.255.0.0,24h
-EOF
-
-sudo systemctl unmask hostapd
-sudo systemctl enable hostapd
-sudo systemctl enable dnsmasq
-
-# Static IP for wlan1
 sudo sed -i '/^# .* Pi - AP interface$/,/^nohook wpa_supplicant$/d' /etc/dhcpcd.conf 2>/dev/null || true
 sudo sed -i '/^interface wlan1$/,/^nohook wpa_supplicant$/d' /etc/dhcpcd.conf 2>/dev/null || true
+
 sudo tee -a /etc/dhcpcd.conf > /dev/null <<EOF
 
 # TX Pi - AP interface
@@ -154,26 +91,31 @@ nohook wpa_supplicant
 EOF
 
 sudo systemctl restart dhcpcd 2>/dev/null || true
+sudo systemctl restart hostapd 2>/dev/null || true
+sudo systemctl restart dnsmasq 2>/dev/null || true
 
 # -----------------------------------------------------------
-# 7. Configure drone-public and install services
+# 5. Configure drone-public
 # -----------------------------------------------------------
 echo ""
-echo "[7/7] Configuring drone-public and installing services..."
+echo "[5/6] Configuring drone-public..."
 
 DRONE_CONFIG="$DRONE_DIR/deployment/server_config.json"
 if [ -f "$DRONE_CONFIG" ]; then
     sed -i "s|\"otherDronesUrls\":.*|\"otherDronesUrls\": \"${OTHER_DRONE_URL}\",|" "$DRONE_CONFIG"
     sed -i "s|\"actualIpAddress\":.*|\"actualIpAddress\": \"${WLAN1_IP}\",|" "$DRONE_CONFIG"
+    echo "  → otherDronesUrls: ${OTHER_DRONE_URL}"
+    echo "  → actualIpAddress: ${WLAN1_IP}"
+else
+    echo "  WARNING: $DRONE_CONFIG not found"
 fi
 
-# Ensure driver loads on boot
-sudo tee /etc/modules-load.d/morse.conf > /dev/null <<EOF
-dot11ah
-morse
-EOF
+# -----------------------------------------------------------
+# 6. Install systemd services
+# -----------------------------------------------------------
+echo ""
+echo "[6/6] Installing systemd services..."
 
-# Install systemd services
 sudo cp "$SCRIPT_DIR/mcs-matrix-tx.service" /etc/systemd/system/
 sudo cp "$SCRIPT_DIR/drone-server.service" /etc/systemd/system/
 
@@ -182,15 +124,21 @@ sudo systemctl enable mcs-matrix-tx.service
 
 echo ""
 echo "============================================"
-echo " Vantron TX setup complete!"
+echo " TX setup complete!"
 echo "============================================"
 echo ""
-echo " Mesh:    wlan0 (Vantron) → BATMAN-adv → bat0"
-echo " AP:      wlan1 (onboard) → SSID: uas6, IP: ${WLAN1_IP}"
+echo " Driver:  loaded (morse + dot11ah)"
+echo " Files:   ${INSTALL_DIR}"
 echo " Service: mcs-matrix-tx.service (enabled)"
 echo " Service: drone-server.service (starts after MCS sweep)"
+echo " AP:      wlan1 → SSID: uas6, IP: ${WLAN1_IP}"
 echo " Drone:   otherDronesUrls → ${OTHER_DRONE_URL}"
 echo " JDK:     $(java -version 2>&1 | head -1)"
 echo ""
-echo " A reboot is recommended for udev rules to take effect."
+echo " Starting services now..."
+sudo systemctl start mcs-matrix-tx
+echo ""
+echo " To watch logs:"
+echo "   journalctl -u mcs-matrix-tx -f"
+echo "   journalctl -u drone-server -f"
 echo ""
