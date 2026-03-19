@@ -20,6 +20,7 @@ INSTALL_DIR="/opt/mcs-test"
 
 # Paths that install script will create
 INSTALL_SCRIPT_REPO="/home/pi/vantron-install-script"
+VANTRON_MESH_DIR="/home/pi/vantron-mesh"
 MCS_TEST_DIR="/home/pi/Recieve-Transfer-MCS-Test"
 DRONE_DIR="/home/pi/drone-public"
 
