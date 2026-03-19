@@ -19,7 +19,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 INSTALL_DIR="/opt/mcs-test"
 
-BATMAN_DIR="/home/pi/BATMAN-Script"
+VANTRON_MESH_DIR="/home/pi/vantron-mesh"
 MCS_TEST_DIR="/home/pi/Recieve-Transfer-MCS-Test"
 DRONE_DIR="/home/pi/drone-public"
 
@@ -65,7 +65,7 @@ echo ""
 echo "[3/7] Cloning repositories..."
 
 for repo_url repo_dir in \
-    "https://github.com/Navigate-IO/BATMAN-Script.git" "$BATMAN_DIR" \
+    "https://github.com/Navigate-IO/vantron-mesh.git" "$VANTRON_MESH_DIR" \
     "https://github.com/Navigate-IO/Recieve-Transfer-MCS-Test.git" "$MCS_TEST_DIR" \
     "https://github.com/Navigate-IO/drone-public.git" "$DRONE_DIR"; do
     if [ -d "$repo_dir" ]; then
